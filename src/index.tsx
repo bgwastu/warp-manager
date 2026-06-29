@@ -87,11 +87,12 @@ function renderClient(id,c){
   document.getElementById('dRefreshed').textContent=c.last_refreshed?c.last_refreshed.split(' ')[0]:'never';
   document.getElementById('dConfig').textContent=c.config||'';
   document.getElementById('dDownload').href='/api/clients/'+id+'/download';
-  document.getElementById('dCopyBtn').onclick=function(){
+  var cb=document.getElementById('dCopyBtn');if(cb)cb.onclick=function(){
     var cfg=document.getElementById('dConfig').textContent;
     navigator.clipboard.writeText(cfg).then(function(){toast('Copied','Config copied','success')})['catch'](function(){toast('Error','Failed to copy','error')});
   };
   var rb=document.getElementById('dRefresh');
+  if(!rb)return;
   rb.onclick=function(){
     rb.disabled=true;rb.innerHTML='<span class="spinner"></span> Refreshing...';
     fetch('/api/clients/'+id+'/refresh',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
@@ -104,6 +105,7 @@ function renderClient(id,c){
     })['catch'](function(err){toast('Error',err.message,'error');rb.disabled=false;rb.innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg> Refresh'});
   };
   var db=document.getElementById('dDelete');
+  if(!db)return;
   db.onclick=function(){
     if(!confirm('Delete "'+c.name+'"?'))return;
     fetch('/api/clients/'+id,{method:'DELETE'}).then(function(r){return r.json()}).then(function(d){
@@ -337,6 +339,10 @@ function DashboardPage({ clients, clientsJson }: { clients: any[]; clientsJson: 
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                   Download
                 </a>
+                <button id="dCopyBtn" className="btn-outline" style={{ fontSize: "13px" }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638M15.666 3.888H18M15.666 3.888V6m-6 0V3.888m0 0H6M15.666 3.888l-.267 1.602m-6 0l-.267-1.602m0 0L6 3.888" /><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 18h-3.5a2 2 0 01-2-2V6a2 2 0 012-2h7a2 2 0 012 2v1" /><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h3m-3 3h3" /></svg>
+                  Copy Config
+                </button>
                 <button id="dRefresh" className="btn-outline" style={{ fontSize: "13px" }}>
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" /></svg>
                   Refresh
