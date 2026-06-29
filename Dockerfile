@@ -24,4 +24,4 @@ COPY src/ ./src/
 VOLUME /data
 EXPOSE 8080
 
-CMD ["bun", "run", "src/index.ts"]
+CMD ["bun", "run", "src/index.tsx"]
