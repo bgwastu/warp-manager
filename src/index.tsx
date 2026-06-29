@@ -93,6 +93,22 @@ function onBgClick(e,id){if(e.target===e.currentTarget)closeModal(id)}
 function copyText(t){navigator.clipboard.writeText(t).then(function(){toast('Copied','Copied to clipboard','success')})['catch'](function(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copied','Copied to clipboard','success')})}
 ${isLogin ? "" : `
 var __clients={};
+
+// Bind all interactive elements after DOM ready
+document.addEventListener('DOMContentLoaded',function(){
+  // New Client buttons
+  document.querySelectorAll('.btn-new-client').forEach(function(b){b.addEventListener('click',function(){openModal('addModal')})});
+  // Modal close buttons
+  document.querySelectorAll('.btn-close-modal').forEach(function(b){b.addEventListener('click',function(){var m=this.getAttribute('data-modal');if(m)closeModal(m)})});
+  // Client card clicks
+  document.querySelectorAll('[data-client]').forEach(function(c){c.addEventListener('click',function(){var id=this.getAttribute('data-client');if(id&&__clients[id])showClient(parseInt(id))})});
+  // Modal overlay backgrounds
+  document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===e.currentTarget)closeModal(this.id)})});
+  // Modal content stop propagation 
+  document.querySelectorAll('.modal-stop').forEach(function(e){e.addEventListener('click',function(ev){ev.stopPropagation()})});
+  // JWT help toggle
+  var jb=document.getElementById('jwtBtn');if(jb){jb.addEventListener('click',function(){var h=document.getElementById('jwtHelp');if(h)h.classList.toggle('hidden')})};
+});
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showClient(id){
   var c=__clients[id];if(!c)return;
@@ -189,7 +205,7 @@ function DashboardPage({ clients }: { clients: any[] }) {
             <img src="https://www.cloudflare.com/favicon.ico" alt="" style={{ width: "22px", height: "22px" }}/>
             <span style={{ fontSize: "14px", fontWeight: 600, letterSpacing: "-0.01em" }}>WARP Manager</span>
           </div>
-          <button onclick="openModal('addModal')" className="btn-pri" style={{ fontSize: "13px"}}>
+          <button className="btn-new-client btn-pri" style={{ fontSize: "13px"}}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
             New Client
           </button>
@@ -205,7 +221,7 @@ function DashboardPage({ clients }: { clients: any[] }) {
             </div>
             <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>No clients yet</h2>
             <p style={{ fontSize: "14px", color: "var(--sec)", marginBottom: "24px" }}>Add your first WARP client to get started.</p>
-            <button onclick="openModal('addModal')" className="btn-pri">New Client</button>
+            <button className="btn-new-client btn-pri">New Client</button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -213,7 +229,7 @@ function DashboardPage({ clients }: { clients: any[] }) {
             {clients.map(c => {
               const isErr = c.status === "error";
               return (
-                <div key={c.id} onclick={`showClient(${c.id})`} className="card card-hover" style={{ padding: "14px 16px" }}>
+                <div key={c.id} data-client={c.id} className="card card-hover" style={{ padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: isErr ? "#ef4444" : "#10b981", flexShrink: 0 }}></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -237,14 +253,14 @@ function DashboardPage({ clients }: { clients: any[] }) {
       </main>
 
       {/* Add Modal */}
-      <div id="addModal" className="modal-overlay hidden" onclick="onBgClick(event,'addModal')">
-        <div className="modal-content" onclick="event.stopPropagation()">
+      <div id="addModal" id="addModal" className="modal-overlay hidden">
+        <div className="modal-content modal-stop">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 12px", borderBottom: "1px solid var(--border)" }}>
             <div>
               <h2 style={{ fontSize: "15px", fontWeight: 600 }}>New Client</h2>
               <p style={{ fontSize: "12px", color: "var(--sec)", marginTop: "2px" }}>Generate a WARP WireGuard configuration</p>
             </div>
-            <button onclick="closeModal('addModal')" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
+            <button data-modal="addModal" className="btn-close-modal" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
               <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
@@ -256,7 +272,7 @@ function DashboardPage({ clients }: { clients: any[] }) {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                 <label style={{ marginBottom: 0 }}>Teams JWT Token <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span></label>
-                <button type="button" onclick="document.getElementById('jwtHelp').classList.toggle('hidden')" style={{ fontSize: "12px", color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}>How to get this?</button>
+                <button type="button" id="jwtBtn" style={{ fontSize: "12px", color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}>How to get this?</button>
               </div>
               <textarea name="jwt" rows={2} placeholder="Paste JWT or leave empty for consumer WARP..."></textarea>
               <div id="jwtHelp" className="hidden" style={{ marginTop: "12px", background: "var(--subtle)", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px 16px" }}>
@@ -281,8 +297,8 @@ function DashboardPage({ clients }: { clients: any[] }) {
       </div>
 
       {/* Detail Modal */}
-      <div id="detailModal" className="modal-overlay hidden" onclick="onBgClick(event,'detailModal')">
-        <div className="modal-content" onclick="event.stopPropagation()">
+      <div id="detailModal" id="detailModal" className="modal-overlay hidden">
+        <div className="modal-content modal-stop">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 12px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div id="dStatus" style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 500, color: "#166534", background: "rgba(16,185,129,0.1)", padding: "3px 10px", borderRadius: "999px" }}>
@@ -291,7 +307,7 @@ function DashboardPage({ clients }: { clients: any[] }) {
               </div>
               <h2 id="dName" style={{ fontSize: "15px", fontWeight: 600 }}></h2>
             </div>
-            <button onclick="closeModal('detailModal')" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
+            <button data-modal="detailModal" className="btn-close-modal" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
               <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
@@ -317,11 +333,11 @@ function DashboardPage({ clients }: { clients: any[] }) {
       </div>
 
       {/* Result Modal */}
-      <div id="resultModal" className="modal-overlay hidden" onclick="onBgClick(event,'resultModal')">
-        <div className="modal-content" onclick="event.stopPropagation()">
+      <div id="resultModal" id="resultModal" className="modal-overlay hidden">
+        <div className="modal-content modal-stop">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 12px", borderBottom: "1px solid var(--border)" }}>
             <h2 style={{ fontSize: "15px", fontWeight: 600 }}>Config Generated</h2>
-            <button onclick="closeModal('resultModal')" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
+            <button data-modal="resultModal" className="btn-close-modal" style={{ padding: "6px", borderRadius: "8px", border: "none", background: "transparent", cursor: "pointer", color: "var(--muted)" }}>
               <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
