@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { html } from "@elysiajs/html";
 import { all, get, create, updateConfig, markError, remove } from "./db";
 import { generateConfig, refreshConfig } from "./warp";
 
@@ -127,10 +126,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;min-height:100vh}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
-.spinner-dark{border-color:rgba(0,0,0,0.1);border-top-color:#FF5F06}
 @media(max-width:640px){.hide-mobile{display:none!important}}
 @media(min-width:641px){.show-mobile{display:none!important}}
+/* Fallback base when Tailwind CDN is slow/blocked */
+body:not(.tailwind-ready) { background:#fafbfc; color:#1e293b; font-family:\'Inter\',system-ui,sans-serif; margin:0; padding:0; }
+body:not(.tailwind-ready) a { color:#FF5F06; }
+body:not(.tailwind-ready) header { background:white; border-bottom:1px solid #e2e8f0; }
 </style>
+<script>document.body.classList.add(\'tailwind-ready\');</script>Tailwind CDN is slow/blocked */
+body:not(.tailwind-ready) { background:#fafbfc; color:#1e293b; font-family:\'Inter\',system-ui,sans-serif; margin:0; padding:0; }
+body:not(.tailwind-ready) a { color:#FF5F06; }
+body:not(.tailwind-ready) header { background:white; border-bottom:1px solid #e2e8f0; }
+</style>
+<script>document.body.classList.add(\'tailwind-ready\');</script>
 </head>
 <body class="bg-surface min-h-screen">
 ${error ? `<div class="fixed top-0 left-0 right-0 z-50 bg-red-50 border-b border-red-200 text-red-700 text-sm px-4 py-3 text-center">${esc(error)}</div>` : ""}
@@ -329,7 +337,11 @@ function authed(req: any): boolean {
 
 // ── Routes ──
 const app = new Elysia()
-  .use(html())
+  .onAfterHandle(({ response, set }: any) => {
+    if (typeof response === "string" && !set.headers?.["Content-Type"]) {
+      set.headers = { ...(set.headers || {}), "Content-Type": "text/html; charset=utf-8" };
+    }
+  })
   .get("/login", ({ cookie: { warp_auth }, set, headers }: any) => {
     if (!PASSWORD || authed({ headers, cookie: { warp_auth } })) { set.redirect = "/"; return; }
     return LoginPage();
