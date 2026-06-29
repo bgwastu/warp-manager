@@ -95,14 +95,16 @@ function renderClient(id,c){
   if(!rb)return;
   rb.onclick=function(){
     rb.disabled=true;rb.innerHTML='<span class="spinner"></span> Refreshing...';
-    fetch('/api/clients/'+id+'/refresh',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    var controller=new AbortController();
+    var to=setTimeout(function(){controller.abort()},15000);
+    fetch('/api/clients/'+id+'/refresh',{method:'POST',signal:controller.signal}).then(function(r){return r.json()}).then(function(d){
       if(d.error)throw new Error(d.error);
-      return fetch('/api/clients/'+id).then(function(r){return r.json()});
+      return fetch('/api/clients/'+id,{signal:controller.signal}).then(function(r){return r.json()});
     }).then(function(updated){
       toast('Refreshed','Config updated','success');
       __data[id]=updated;
       renderClient(id,updated);
-    })['catch'](function(err){toast('Error',err.message,'error');rb.disabled=false;rb.innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg> Refresh'});
+    })['catch'](function(err){toast('Error',err.message||'Request timed out','error')})['finally'](function(){clearTimeout(to);rb.disabled=false;rb.innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg> Refresh'});
   };
   var db=document.getElementById('dDelete');
   if(!db)return;
