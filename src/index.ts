@@ -321,10 +321,20 @@ ${clients.map(c => {
 }
 
 // ── Auth middleware ──
-function authed(req: any): boolean {
+function getCookie(c: string | undefined, name: string): string | null {
+  if (!c) return null;
+  for (const p of c.split(";")) {
+    const eq = p.trim().indexOf("=");
+    if (eq > 0 && p.trim().substring(0, eq) === name) return p.trim().substring(eq + 1);
+  }
+  return null;
+}
+function authed(headers: any): boolean {
   if (!PASSWORD) return true;
-  const cookie = req?.headers?.cookie || req?.cookie?.warp_auth?.value || "";
-  return cookie.split(";").some((c: string) => c.trim() === "warp_auth=1");
+  return getCookie(headers?.cookie || "", "warp_auth") === "1";
+}
+function setAuthCookie(set: any): void {
+  set.headers = { ...(set.headers || {}), "Set-Cookie": "warp_auth=1; Path=/; Max-Age=604800; HttpOnly; SameSite=Lax" };
 }
 
 // ── Routes ──
@@ -334,24 +344,24 @@ const app = new Elysia()
       set.headers = { ...(set.headers || {}), "Content-Type": "text/html; charset=utf-8" };
     }
   })
-  .get("/login", ({ cookie: { warp_auth }, set, headers }: any) => {
-    if (!PASSWORD || authed({ headers, cookie: { warp_auth } })) { set.redirect = "/"; return; }
+  .get("/login", ({ set, headers }: any) => {
+    if (!PASSWORD || authed(headers)) { set.redirect = "/"; return; }
     return LoginPage();
   })
-  .post("/login", ({ body, cookie: { warp_auth }, set }: any) => {
+  .post("/login", ({ body, set, headers }: any) => {
     if (body?.password === PASSWORD) {
-      if (warp_auth?.set) warp_auth.set({ value: "1", path: "/", maxAge: 86400 * 7 });
+      setAuthCookie(set);
       set.redirect = "/";
       return;
     }
     return LoginPage("Incorrect password");
   })
-  .get("/", ({ cookie: { warp_auth }, set, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) { set.redirect = "/login"; return; }
+  .get("/", ({ set, headers }: any) => {
+    if (!authed(headers)) { set.redirect = "/login"; return; }
     return Dashboard(all());
   })
-  .post("/api/clients", async ({ body, set, cookie: { warp_auth }, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) { set.status = 401; return { error: "Unauthorized" }; }
+  .post("/api/clients", async ({ body, set, headers }: any) => {
+    if (!authed(headers)) { set.status = 401; return { error: "Unauthorized" }; }
     const name = (body?.device_name || "").trim();
     if (!name) { set.status = 400; return { error: "Device name is required" }; }
     const jwt = (body?.jwt || "").trim() || undefined;
@@ -364,16 +374,16 @@ const app = new Elysia()
       return { error: e.message };
     }
   })
-  .get("/api/clients/:id/download", ({ params: { id: idStr }, set, cookie: { warp_auth }, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) { set.status = 401; return "Unauthorized"; }
+  .get("/api/clients/:id/download", ({ params: { id: idStr }, set, headers }: any) => {
+    if (!authed(headers)) { set.status = 401; return "Unauthorized"; }
     const client = get(parseInt(idStr, 10));
     if (!client || !client.config) { set.status = 404; return "Not found"; }
     const filename = `warp-${client.name.replace(/\s+/g, "-").toLowerCase()}.conf`;
-    set.headers = { "Content-Type": "text/plain", "Content-Disposition": `attachment; filename="${filename}"` };
+    set.headers = { ...(set.headers || {}), "Content-Type": "text/plain", "Content-Disposition": `attachment; filename="${filename}"` };
     return client.config;
   })
-  .post("/api/clients/:id/refresh", ({ params: { id: idStr }, set, cookie: { warp_auth }, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) { set.status = 401; return { error: "Unauthorized" }; }
+  .post("/api/clients/:id/refresh", ({ params: { id: idStr }, set, headers }: any) => {
+    if (!authed(headers)) { set.status = 401; return { error: "Unauthorized" }; }
     const id = parseInt(idStr, 10);
     const client = get(id);
     if (!client) { set.status = 404; return { error: "Client not found" }; }
@@ -389,13 +399,13 @@ const app = new Elysia()
       set.status = 500; return { error: e.message };
     }
   })
-  .delete("/api/clients/:id", ({ params: { id: idStr }, set, cookie: { warp_auth }, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) { set.status = 401; return { error: "Unauthorized" }; }
+  .delete("/api/clients/:id", ({ params: { id: idStr }, set, headers }: any) => {
+    if (!authed(headers)) { set.status = 401; return { error: "Unauthorized" }; }
     remove(parseInt(idStr, 10));
     return { success: true };
   })
-  .post("/api/refresh-all", ({ cookie: { warp_auth }, headers }: any) => {
-    if (!authed({ headers, cookie: { warp_auth } })) return { error: "Unauthorized" };
+  .post("/api/refresh-all", ({ headers }: any) => {
+    if (!authed(headers)) return { error: "Unauthorized" };
     refreshAllClients();
     return { success: true };
   })
