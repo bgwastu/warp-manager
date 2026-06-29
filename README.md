@@ -1,6 +1,6 @@
 # WARP Manager
 
-Self-hosted web app to generate and auto-refresh Cloudflare WARP WireGuard configurations. Built with Bun + Elysia.
+Self-hosted web app to generate and auto-refresh Cloudflare WARP WireGuard configurations.
 
 ## Features
 
