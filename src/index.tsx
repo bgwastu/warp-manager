@@ -42,7 +42,7 @@ a:hover{color:var(--a-hover)}
 .btn-ghost{padding:8px 16px;background:transparent;color:var(--sec);border:none;border-radius:10px;font-size:13px;cursor:pointer}
 .btn-ghost:hover{background:var(--hover);color:var(--txt)}
 .btn-outline{padding:7px 14px;background:var(--card);color:var(--txt);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer}
-.btn-outline:hover{background:var(--hover);border-color:var(--muted)}
+.btn-outline:hover{background:var(--hover);border-color:var(--muted);color:var(--txt)}
 .card{border-radius:12px;border:1px solid var(--border)}
 .card-hover{cursor:pointer}.card-hover:hover{border-color:var(--muted);box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.3);backdrop-filter:blur(2px);display:flex;align-items:flex-end;justify-content:center}
@@ -79,7 +79,7 @@ function toast(t,m,type){
 function openModal(id){var m=document.getElementById(id);if(m){m.classList.remove('hidden');document.body.style.overflow='hidden'}}
 function closeModal(id){var m=document.getElementById(id);if(m){m.classList.add('hidden');document.body.style.overflow=''}}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function showClient(id,c){
+function renderClient(id,c){
   var e=!!c.error;
   document.getElementById('dName').textContent=c.name;
   document.getElementById('dStatus').innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;background:'+(e?'rgba(239,68,68,0.1)':'rgba(16,185,129,0.1)')+';color:'+(e?'#ef4444':'#10b981')+'"><span style="width:6px;height:6px;border-radius:50%;background:'+(e?'#ef4444':'#10b981')+';display:inline-block"></span>'+(e?'Error':'Active')+'</span>';
@@ -87,14 +87,21 @@ function showClient(id,c){
   document.getElementById('dRefreshed').textContent=c.last_refreshed?c.last_refreshed.split(' ')[0]:'never';
   document.getElementById('dConfig').textContent=c.config||'';
   document.getElementById('dDownload').href='/api/clients/'+id+'/download';
+  document.getElementById('dCopyBtn').onclick=function(){
+    var cfg=document.getElementById('dConfig').textContent;
+    navigator.clipboard.writeText(cfg).then(function(){toast('Copied','Config copied','success')})['catch'](function(){toast('Error','Failed to copy','error')});
+  };
   var rb=document.getElementById('dRefresh');
   rb.onclick=function(){
-    rb.disabled=true;rb.textContent='Refreshing...';
+    rb.disabled=true;rb.innerHTML='<span class="spinner"></span> Refreshing...';
     fetch('/api/clients/'+id+'/refresh',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
       if(d.error)throw new Error(d.error);
+      return fetch('/api/clients/'+id).then(function(r){return r.json()});
+    }).then(function(updated){
       toast('Refreshed','Config updated','success');
-      setTimeout(function(){location.reload()},1000);
-    })['catch'](function(err){toast('Error',err.message,'error');rb.disabled=false;rb.textContent='Refresh'});
+      __data[id]=updated;
+      renderClient(id,updated);
+    })['catch'](function(err){toast('Error',err.message,'error');rb.disabled=false;rb.innerHTML='<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg> Refresh'});
   };
   var db=document.getElementById('dDelete');
   db.onclick=function(){
@@ -102,12 +109,32 @@ function showClient(id,c){
     fetch('/api/clients/'+id,{method:'DELETE'}).then(function(r){return r.json()}).then(function(d){
       if(d.error)throw new Error(d.error);
       toast('Deleted','Client removed','success');closeModal('detailModal');
-      setTimeout(function(){location.reload()},500);
+      delete __data[id];
+      var el=document.querySelector('[data-client="'+id+'"]');
+      if(el)el.remove();
+      var remaining=Object.keys(__data).length;
+      if(remaining===0)location.reload();
     })['catch'](function(err){toast('Error',err.message,'error')});
   };
   if(e){document.getElementById('dError').classList.remove('hidden');document.getElementById('dErrorText').textContent=c.error}
   else document.getElementById('dError').classList.add('hidden');
   openModal('detailModal');
+}
+function prependCard(id,c){
+  __data[id]=c;
+  var main=document.querySelector('#clientList');
+  if(!main)return;
+  var div=document.createElement('div');
+  div.setAttribute('data-client',id);
+  div.className='card card-hover';
+  div.style.padding='14px 16px';
+  div.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:10px;height:10px;border-radius:50%;background:#10b981;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><span style="font-size:14px;font-weight:600;color:var(--txt)">'+esc(c.name)+'</span></div><div style="font-size:12px;color:var(--muted);display:flex;gap:12px"><span class="hide-mobile">Created '+(c.created_at?c.created_at.split(' ')[0]:'—')+'</span><span style="color:var(--border)" class="hide-mobile">·</span><span>Refreshed '+(c.last_refreshed?c.last_refreshed.split(' ')[0]:'never')+'</span></div></div><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>';
+  main.insertBefore(div,main.firstChild);
+  div.addEventListener('click',function(){
+    var id2=parseInt(this.getAttribute('data-client'));
+    fetch('/api/clients/'+id2).then(function(r){return r.json()}).then(function(d){renderClient(id2,d)})['catch'](function(err){toast('Error',err.message,'error')});
+  });
+  document.getElementById('emptyState')?.remove();
 }
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.btn-new-client').forEach(function(b){b.addEventListener('click',function(){openModal('addModal')})});
@@ -117,23 +144,15 @@ document.addEventListener('DOMContentLoaded',function(){
   var jb=document.getElementById('jwtBtn');if(jb){jb.addEventListener('click',function(){var h=document.getElementById('jwtHelp');if(h)h.classList.toggle('hidden')})};
   document.querySelectorAll('[data-client]').forEach(function(c){c.addEventListener('click',function(){
     var id=parseInt(this.getAttribute('data-client'));
-    fetch('/api/clients/'+id).then(function(r){return r.json()}).then(function(d){showClient(id,d)})['catch'](function(err){toast('Error',err.message,'error')});
+    fetch('/api/clients/'+id).then(function(r){return r.json()}).then(function(d){renderClient(id,d)})['catch'](function(err){toast('Error',err.message,'error')});
   })});
   var gf=document.getElementById('genForm');if(gf){gf.addEventListener('submit',function(e){
     e.preventDefault();var btn=document.getElementById('genBtn'),fd=new FormData(e.target);
     btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Generating...';
     fetch('/api/clients',{method:'POST',body:fd}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Failed');return d})}).then(function(d){
-      var h='<div class="fade-in">'+
-        '<div style="display:flex;gap:12px;align-items:center;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);color:#10b981;border-radius:12px;padding:14px 16px;margin-bottom:16px"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><div><strong>'+esc(d.name)+'</strong> created successfully</div></div>'+
-        '<div style="display:flex;gap:8px;margin-bottom:16px">'+
-          '<a href="/api/clients/'+d.id+'/download" class="btn-pri"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Download .conf</a>'+
-          '<button onclick="navigator.clipboard.writeText('+JSON.stringify(d.config)+').then(function(){toast(\'Copied\',\'Config copied\',\'success\')})" class="btn-outline"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638"/></svg> Copy</button>'+
-        '</div>'+
-        '<pre style="background:#0f172a;color:#e2e8f0;padding:16px;border-radius:12px;overflow:auto;max-height:280px;font-size:12px;line-height:1.6;font-family:ui-monospace,monospace">'+esc(d.config)+'</pre>'+
-      '</div>';
-      document.getElementById('resultData').innerHTML=h;
       closeModal('addModal');
-      setTimeout(function(){openModal('resultModal')},200);
+      prependCard(d.id,d);
+      renderClient(d.id,d);
     })['catch'](function(err){toast('Error',err.message,'error')})['finally'](function(){btn.disabled=false;btn.innerHTML='Generate Config'});
   })};
 });
@@ -213,7 +232,7 @@ function DashboardPage({ clients, clientsJson }: { clients: any[]; clientsJson: 
         {/* Content */}
         <main style={{ maxWidth: "900px", margin: "0 auto", padding: "24px 16px" }}>
           {!hasClients ? (
-            <div className="fade-in" style={{ textAlign: "center", padding: "80px 16px" }}>
+            <div id="emptyState" className="fade-in" style={{ textAlign: "center", padding: "80px 16px" }}>
               <div style={{ width: "56px", height: "56px", borderRadius: "16px", background: "var(--subtle)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="var(--accent)" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
@@ -222,7 +241,7 @@ function DashboardPage({ clients, clientsJson }: { clients: any[]; clientsJson: 
               <button className="btn-new-client btn-pri">New Client</button>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div id="clientList" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {clients.map(c => {
                 const isErr = c.status === "error";
                 return (
@@ -335,19 +354,7 @@ function DashboardPage({ clients, clientsJson }: { clients: any[]; clientsJson: 
           </div>
         </div>
 
-        {/* Result Modal */}
-        <div id="resultModal" className="modal-overlay hidden">
-          <div className="modal-content">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 12px", borderBottom: "1px solid var(--border)" }}>
-              <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--txt)" }}>Config Generated</h2>
-              <button data-modal="resultModal" className="btn-close-modal btn-ghost" style={{ padding: "6px" }}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div id="resultData" style={{ padding: "16px 24px 24px" }} />
-          </div>
-        </div>
-      </div>
+              </div>
     </HtmlPage>
   );
 }
