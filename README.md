@@ -33,7 +33,6 @@ Open http://localhost:8080
 | `DB_PATH` | `/data/clients.db` | SQLite database path |
 | `REFRESH_INTERVAL` | `6` | Hours between auto-refresh cycles |
 | `PASSWORD` | (none) | Optional password to protect the web UI |
-| `WARP_SH` | `/app/warp.sh` | Path to warp.sh script |
 
 ## Build from source
 
