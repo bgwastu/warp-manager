@@ -154,7 +154,7 @@ function esc(s: string): string {
 
 // ── React Components ──
 
-function LoginPage({ error }: { error?: string }) {
+function LoginPage({ error }: { error?: string } = {}) {
   return Shell(
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
       <div className="fade-in" style={{ width: "100%", maxWidth: "360px" }}>
